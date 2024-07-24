@@ -2,7 +2,8 @@ CPPFLAGS = -std=c++20 -g -Ofast -fopenmp
 CXX=g++
 
 run: clean main
-	yhrun -n 1 -N 1 -c 16 -p thcp3 ./main
+	# yhrun -n 1 -N 1 -c 16 -p thcp3 ./main
+	./main
 
 sort:sort.o
 	$(CXX) $(CPPFLAGS) -o $@ $^
