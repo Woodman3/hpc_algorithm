@@ -11,17 +11,24 @@
     std::cout << "Elapsed time: " << elapsed.count() << " s\n"; \
 }
 
+void show(int* a, size_t n){
+    for(int i=0;i<n;i++){
+        std::cout<<a[i]<<" ";
+    }
+    std::cout<<std::endl;
+}
 
 template<typename T, class OP>
 void exclusive_scan_par(T* a,T init, size_t n, OP op){
     int offset=1;
-    for(;offset<n;offset<<=1){
+    for(;offset<(n>>1);offset<<=1){
         #pragma omp parallel for
         #pragma unroll 
-        for(int i =n-1-offset;i>=0;i-=offset<<1){
+        for(int i =n-1-( offset*3 );i>=0;i-=offset<<1){
             a[i+offset] = op(a[i],a[i+offset]);
         }
     }
+    offset<<=1;
     a[n-1] = init;
     for(;offset>0;offset>>=1){
         #pragma omp parallel for
@@ -30,6 +37,29 @@ void exclusive_scan_par(T* a,T init, size_t n, OP op){
             T temp = a[i];
             a[i] = a[i+offset];
             a[i+offset] = op(a[i+offset],temp);
+        }
+    }
+}
+
+template<typename T, class OP>
+void exclusive_scan_par_reverse(T* a,T init, size_t n, OP op){
+    int offset=1;
+    for(;offset<(n>>1);offset<<=1){
+        #pragma omp parallel for
+        #pragma unroll 
+        for(int i =offset;i<n;i+=offset<<1){
+            a[i-offset] = op(a[i],a[i-offset]);
+        }
+    }
+    offset<<=1;
+    a[0] = init;
+    for(;offset>0;offset>>=1){
+        #pragma omp parallel for
+        #pragma unroll 
+        for(int i =offset;i<n;i+=offset<<1){
+            T temp = a[i];
+            a[i] = a[i-offset];
+            a[i-offset] = op(a[i-offset],temp);
         }
     }
 }
@@ -45,16 +75,20 @@ void exclusive_scan_seq(T* a,T init, size_t n, OP op){
     }
 }
 
-void show(int* a, size_t n){
-    for(int i=0;i<n;i++){
-        std::cout<<a[i]<<" ";
+template<typename T, class OP>
+void exclusive_scan_seq_reverse(T* a,T init, size_t n, OP op){
+    T tmp = a[n-1];
+    a[n-1] = init;
+    for(int i=n-2;i>=0;i--){
+        T t = a[i];
+        a[i] =op(tmp,a[i+1]);
+        tmp = t;
     }
-    std::cout<<std::endl;
 }
+
 
 template<typename T, class OP>
 void exclusive_seg_scan_seq(T* a,int* flags,T init, size_t n, OP op){
-    // assert(flags[0]==1);
     T tmp = a[0];
     for(int i=0;i<n;i++){
         if(flags[i]){
@@ -70,31 +104,27 @@ void exclusive_seg_scan_seq(T* a,int* flags,T init, size_t n, OP op){
 
 template<typename T, class OP>
 void exclusive_seg_scan_par(T* a,int* flags,T init, size_t n, OP op){
-    // assert(flags[0]==1);
-    show(a,n);
-    show(flags,n);
     int offset=1;
     int fb[n];
     for(int i=0;i<n;i++){
         fb[i] = flags[i];
     }
-    for(;offset<n;offset<<=1){
-        // #pragma omp parallel for
-        // #pragma unroll 
-        for(int i =n-1-offset;i>=0;i-=offset<<1){
+    for(;offset<( n>>1 );offset<<=1){
+        #pragma omp parallel for
+        #pragma unroll 
+        for(int i =n-1- ( offset*3 );i>=0;i-=offset<<1){
             if(!flags[i+offset]){
                 a[i+offset] = op(a[i],a[i+offset]);
                 flags[i+offset] |= flags[i];
             }
         }
-        show(a,n);
     }
+    offset<<=1;
     a[n-1] = init;
     flags[n-1]=0;
-    std::cout<<"down"<<std::endl;
     for(;offset>0;offset>>=1){
-        // #pragma omp parallel for
-        // #pragma unroll 
+        #pragma omp parallel for
+        #pragma unroll 
         for(int i =(n-1)-offset;i>=0;i-=offset<<1){
             T temp = a[i];
             a[i]= a[i+offset];
@@ -107,6 +137,66 @@ void exclusive_seg_scan_par(T* a,int* flags,T init, size_t n, OP op){
                 a[i+offset] = op(a[i+offset],temp);
             }
         }
-        show(a,n);
+    }
+}
+
+
+template<typename T, class OP>
+void exclusive_seg_scan_seq_reverse(T* a,int* flags,T init, size_t n, OP op){
+    T tmp = a[n-1];
+    for(int i=n-1;i>=0;i--){
+        if(flags[i]){
+            tmp = a[i];
+            a[i] = init;
+        }else{
+            T t = a[i];
+            a[i] =op(tmp,a[i+1]);
+            tmp = t;
+        }
+    }
+}
+
+template<typename T, class OP>
+void exclusive_seg_scan_par_reverse(T* a,int* flags,T init, size_t n, OP op){
+    // show(a,n);
+    // show(flags,n);
+    int offset=1;
+    int fb[n];
+    for(int i=0;i<n;i++){
+        fb[i] = flags[i];
+    }
+    for(;offset<( n>>1 );offset<<=1){
+        #pragma omp parallel for
+        #pragma unroll 
+        for(int i =offset;i<n;i+=offset<<1){
+            if(!flags[i-offset]){
+                a[i-offset] = op(a[i],a[i-offset]);
+                flags[i-offset] |= flags[i];
+            }
+        }
+        // show(a,n);
+    }
+    offset<<=1;
+    a[0] = init;
+    flags[0]=0;
+    std::cout<<"down"<<std::endl;
+    // show(a,n);
+    // show(flags,n);
+    for(;offset>0;offset>>=1){
+        #pragma omp parallel for
+        #pragma unroll 
+        for(int i =offset;i<n;i+=offset<<1){
+            T temp = a[i];
+            a[i]= a[i-offset];
+            if(fb[i-1]){
+                a[i-offset] = init;
+            }
+            else if(flags[i]){
+                a[i-offset] = op(init,temp);
+            }else{
+                a[i-offset] = op(a[i-offset],temp);
+            }
+        }
+        // show(a,n);
     }
 }
