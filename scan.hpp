@@ -1,22 +1,9 @@
+#pragma once
 #include<cstddef>
 #include<chrono>
 #include<iostream>
 #include<omp.h>
 
-#define TIME(f) { \
-    auto start = std::chrono::high_resolution_clock::now(); \
-    f; \
-    auto end = std::chrono::high_resolution_clock::now(); \
-    std::chrono::duration<double> elapsed = end - start; \
-    std::cout << "Elapsed time: " << elapsed.count() << " s\n"; \
-}
-
-void show(int* a, size_t n){
-    for(int i=0;i<n;i++){
-        std::cout<<a[i]<<" ";
-    }
-    std::cout<<std::endl;
-}
 
 template<typename T, class OP>
 void exclusive_scan_par(T* a,T init, size_t n, OP op){
@@ -28,7 +15,6 @@ void exclusive_scan_par(T* a,T init, size_t n, OP op){
             a[i+offset] = op(a[i],a[i+offset]);
         }
     }
-    offset<<=1;
     a[n-1] = init;
     for(;offset>0;offset>>=1){
         #pragma omp parallel for
@@ -51,7 +37,6 @@ void exclusive_scan_par_reverse(T* a,T init, size_t n, OP op){
             a[i-offset] = op(a[i],a[i-offset]);
         }
     }
-    offset<<=1;
     a[0] = init;
     for(;offset>0;offset>>=1){
         #pragma omp parallel for
@@ -119,7 +104,6 @@ void exclusive_seg_scan_par(T* a,int* flags,T init, size_t n, OP op){
             }
         }
     }
-    offset<<=1;
     a[n-1] = init;
     flags[n-1]=0;
     for(;offset>0;offset>>=1){
@@ -158,8 +142,6 @@ void exclusive_seg_scan_seq_reverse(T* a,int* flags,T init, size_t n, OP op){
 
 template<typename T, class OP>
 void exclusive_seg_scan_par_reverse(T* a,int* flags,T init, size_t n, OP op){
-    // show(a,n);
-    // show(flags,n);
     int offset=1;
     int fb[n];
     for(int i=0;i<n;i++){
@@ -174,14 +156,9 @@ void exclusive_seg_scan_par_reverse(T* a,int* flags,T init, size_t n, OP op){
                 flags[i-offset] |= flags[i];
             }
         }
-        // show(a,n);
     }
-    offset<<=1;
     a[0] = init;
     flags[0]=0;
-    std::cout<<"down"<<std::endl;
-    // show(a,n);
-    // show(flags,n);
     for(;offset>0;offset>>=1){
         #pragma omp parallel for
         #pragma unroll 
@@ -197,6 +174,5 @@ void exclusive_seg_scan_par_reverse(T* a,int* flags,T init, size_t n, OP op){
                 a[i-offset] = op(a[i-offset],temp);
             }
         }
-        // show(a,n);
     }
 }

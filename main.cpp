@@ -1,36 +1,22 @@
-#include "scan.hpp"
 #include <iostream>
-#include <cstring>
-#include <random>
+#include <algorithm>
+#include "sort.hpp"
+#include "test.hpp"
 
 using namespace std;
 
 int main(){
-    std::random_device r;
-    std::default_random_engine e(r());
-    std::uniform_int_distribution<int>dis(0,4);
-    std::bernoulli_distribution bd(0.8);
-    int n=10;
-    int init =2;
-    int *a= new int[n];
-    int *b=new int[n];
-    int *flags =new int[n];
-    for(int i=0;i<n;i++){
-        a[i]=dis(e);
-        b[i]=a[i];
-        flags[i] =bd(e)?0:1;
-    }
-    flags[n-1]=1;
-    TIME(exclusive_seg_scan_seq_reverse(b,flags,init,n,plus<int>()); )  
-    TIME(exclusive_seg_scan_par_reverse(a,flags,init,n,plus<int>());)
-    // TIME(exclusive_scan_seq_reverse(b,init,n,plus<int>()); )  
-    // TIME(exclusive_scan_par_reverse(a,init,n,plus<int>());)
-    for(int i=0;i<n;i++){
-        if(a[i]!=b[i]){
-            cout<<"Error at index "<<i<<endl;
-            cout<<"Expected "<<b[i]<<" but got "<<a[i]<<endl;
-            return -1;
-        }
-    }
+    // int n=1000000;
+    // int max_power = 4;
+    // std::uniform_int_distribution<int>dis(0,( 1<<max_power )-1);
+    test_scan();
+    // int *a= random_data_gen<int>(n,dis);
+    // int *b = new int[n];
+    // for(int i=0;i<n;i++) b[i]=a[i];
+    // cout<<"radix"<<endl;
+    // TIME(radix_sort(a,max_power,n);)
+    // cout<<"std"<<endl;
+    // TIME(sort(b,b+n););
+    // check(a,b,n);
     return 0;
 }
